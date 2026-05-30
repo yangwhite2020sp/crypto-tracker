@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoTracker Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📊 CryptoTracker Pro</div>
+        <div class="nav-links">
+            <a href="/" class="active">仪表盘</a>
+            <a href="/strategies">策略信号</a>
+        </div>
+        <div class="nav-status">
+            <button onclick="refreshData()" class="btn btn-sm" id="refreshBtn">🔄 刷新</button>
+            <span class="time">{{ now }}</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- 行情卡片 -->
+        <section class="cards">
+            {% for symbol in SYMBOLS %}
+            {% set ticker = tickers.get(symbol, {}) %}
+            {% set score = scores.get(symbol, {}) %}
+            <div class="card" onclick="location.href='/chart/{{ symbol }}'">
+                <div class="card-header">
+                    <h3>{{ SYMBOL_DISPLAY.get(symbol, symbol) }}</h3>
+                    {% if ticker %}
+                    <span class="price">{{ "%.2f"|format(ticker.price) }}</span>
+                    <span class="change {{ 'up' if ticker.change_pct > 0 else 'down' }}">
+                        {{ "%+.2f"|format(ticker.change_pct) }}%
+                    </span>
+                    {% endif %}
+                </div>
+                {% if score %}
+                <div class="card-signal">
+                    {% set dir = score.direction %}
+                    {% if 'STRONG_BUY' in dir %}
+                        <span class="badge strong-buy">🟢🟢 强烈买入</span>
+                    {% elif 'BUY' in dir %}
+                        <span class="badge buy">🟢 买入</span>
+                    {% elif 'STRONG_SELL' in dir %}
+                        <span class="badge strong-sell">🔴🔴 强烈卖出</span>
+                    {% elif 'SELL' in dir %}
+                        <span class="badge sell">🟠 卖出</span>
+                    {% else %}
+                        <span class="badge hold">🟡 观望</span>
+                    {% endif %}
+                    <span class="score">评分: {{ "%+.3f"|format(score.total_score) }}</span>
+                </div>
+                <div class="card-factors">
+                    {% for factor, val in score.factor_scores.items() %}
+                    <span class="factor {{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">
+                        {{ factor }}: {{ "%+.2f"|format(val) }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="card-link">查看详情 →</div>
+            </div>
+            {% endfor %}
+        </section>
+
+        <!-- 策略信号总览 -->
+        <section class="signals-section">
+            <h2>📡 多因子信号总览</h2>
+            <table class="signal-table">
+                <thead>
+                    <tr>
+                        <th>币种</th>
+                        <th>MA排列</th>
+                        <th>ADX强度</th>
+                        <th>SuperTrend</th>
+                        <th>MACD动量</th>
+                        <th>OBV</th>
+                        <th>RSI背离</th>
+                        <th>布林带</th>
+                        <th>成交量</th>
+                        <th>ATR突破</th>
+                        <th>综合评分</th>
+                        <th>方向</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for symbol in SYMBOLS %}
+                    {% set score = scores.get(symbol, {}) %}
+                    {% if score %}
+                    <tr>
+                        <td><strong>{{ SYMBOL_DISPLAY.get(symbol, symbol) }}</strong></td>
+                        {% for factor, val in score.factor_scores.items() %}
+                        <td class="{{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">
+                            {{ "%+.2f"|format(val) }}
+                        </td>
+                        {% endfor %}
+                        <td class="total-score {{ 'pos' if score.total_score > 0.1 else ('neg' if score.total_score < -0.1 else 'neu') }}">
+                            {{ "%+.3f"|format(score.total_score) }}
+                        </td>
+                        <td>
+                            {% set dir = score.direction %}
+                            {% if 'STRONG_BUY' in dir %}<span class="badge strong-buy">强烈买入</span>
+                            {% elif 'BUY' in dir %}<span class="badge buy">买入</span>
+                            {% elif 'STRONG_SELL' in dir %}<span class="badge strong-sell">强烈卖出</span>
+                            {% elif 'SELL' in dir %}<span class="badge sell">卖出</span>
+                            {% else %}<span class="badge hold">观望</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 数据状态 -->
+        <section class="data-status">
+            <h3>📁 数据状态</h3>
+            <div class="status-grid">
+                {% for key, info in data_status.items() %}
+                <div class="status-item">
+                    <span>{{ info.symbol }} {{ info.interval }}</span>
+                    <span>{{ info.count }} 条</span>
+                    <span class="status-time">{{ info.latest.strftime('%m-%d %H:%M') if info.latest else '无数据' }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>⚠️ 所有信号仅供参考，不构成投资建议 | CryptoTracker Pro v1.0</p>
+    </footer>
+
+    <script>
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '⏳ 采集中...';
+            btn.disabled = true;
+
+            fetch('/api/refresh', {method: 'POST'})
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        const total = Object.values(d.results).reduce((sum, v) => sum + Object.values(v).reduce((s, n) => s + n, 0), 0);
+                        btn.innerHTML = `✅ 已更新 ${total} 条`;
+                        setTimeout(() => location.reload(), 800);
+                    } else {
+                        btn.innerHTML = '❌ 刷新失败';
+                        setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000);
+                    }
+                })
+                .catch(e => {
+                    btn.innerHTML = '❌ 网络错误';
+                    setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000);
+                });
+        }
+
+        // 每60秒自动刷新
+        setInterval(() => location.reload(), 60000);
+    </script>
+</body>
+</html>

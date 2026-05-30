@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>策略信号 - CryptoTracker Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📊 CryptoTracker Pro</div>
+        <div class="nav-links">
+            <a href="/">仪表盘</a>
+            <a href="/strategies" class="active">策略信号</a>
+        </div>
+        <div class="nav-status">
+            <span class="time">{{ now }}</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>📡 策略信号总览</h1>
+
+        {% for symbol, result in analysis.items() %}
+        <div class="strategy-card">
+            <div class="strategy-header">
+                <h2>{{ SYMBOL_DISPLAY.get(symbol, symbol) }}/USDT
+                    {% set dir = result.direction %}
+                    {% if 'STRONG_BUY' in dir %}
+                        <span class="badge strong-buy">🟢🟢 强烈买入</span>
+                    {% elif 'BUY' in dir %}
+                        <span class="badge buy">🟢 买入</span>
+                    {% elif 'STRONG_SELL' in dir %}
+                        <span class="badge strong-sell">🔴🔴 强烈卖出</span>
+                    {% elif 'SELL' in dir %}
+                        <span class="badge sell">🟠 卖出</span>
+                    {% else %}
+                        <span class="badge hold">🟡 观望</span>
+                    {% endif %}
+                </h2>
+                <div class="strategy-price">
+                    ${{ "%.2f"|format(result.price) }}
+                    <span class="score-big {{ 'pos' if result.total_score > 0 else 'neg' }}">
+                        {{ "%+.4f"|format(result.total_score) }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- 因子分组 -->
+            <div class="factor-groups">
+                <div class="factor-group">
+                    <h4>📈 趋势层 (40%)</h4>
+                    {% for factor in ['MA排列', 'ADX强度', 'SuperTrend'] %}
+                    {% set val = result.factor_scores.get(factor, 0) %}
+                    <div class="factor-row">
+                        <span class="factor-label">{{ factor }}</span>
+                        <div class="factor-bar">
+                            <div class="bar {{ 'pos' if val > 0 else 'neg' }}" style="width: {{ (val|abs * 100)|round }}%"></div>
+                        </div>
+                        <span class="factor-val {{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">{{ "%+.3f"|format(val) }}</span>
+                        <span class="factor-desc">{{ result.details.get(factor, '')[:60] }}...</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="factor-group">
+                    <h4>⚡ 动量层 (20%)</h4>
+                    {% for factor in ['MACD动量', 'OBV能量潮'] %}
+                    {% set val = result.factor_scores.get(factor, 0) %}
+                    <div class="factor-row">
+                        <span class="factor-label">{{ factor }}</span>
+                        <div class="factor-bar">
+                            <div class="bar {{ 'pos' if val > 0 else 'neg' }}" style="width: {{ (val|abs * 100)|round }}%"></div>
+                        </div>
+                        <span class="factor-val {{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">{{ "%+.3f"|format(val) }}</span>
+                        <span class="factor-desc">{{ result.details.get(factor, '')[:60] }}...</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="factor-group">
+                    <h4>🔄 震荡层 (20%)</h4>
+                    {% for factor in ['RSI背离', '布林带'] %}
+                    {% set val = result.factor_scores.get(factor, 0) %}
+                    <div class="factor-row">
+                        <span class="factor-label">{{ factor }}</span>
+                        <div class="factor-bar">
+                            <div class="bar {{ 'pos' if val > 0 else 'neg' }}" style="width: {{ (val|abs * 100)|round }}%"></div>
+                        </div>
+                        <span class="factor-val {{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">{{ "%+.3f"|format(val) }}</span>
+                        <span class="factor-desc">{{ result.details.get(factor, '')[:60] }}...</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="factor-group">
+                    <h4>📊 量价层 (20%)</h4>
+                    {% for factor in ['成交量突破', 'ATR突破'] %}
+                    {% set val = result.factor_scores.get(factor, 0) %}
+                    <div class="factor-row">
+                        <span class="factor-label">{{ factor }}</span>
+                        <div class="factor-bar">
+                            <div class="bar {{ 'pos' if val > 0 else 'neg' }}" style="width: {{ (val|abs * 100)|round }}%"></div>
+                        </div>
+                        <span class="factor-val {{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">{{ "%+.3f"|format(val) }}</span>
+                        <span class="factor-desc">{{ result.details.get(factor, '')[:60] }}...</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="strategy-actions">
+                <a href="/chart/{{ symbol }}" class="btn">📈 查看图表</a>
+                <a href="/backtest/{{ symbol }}" class="btn">📊 回测分析</a>
+            </div>
+        </div>
+        {% endfor %}
+    </main>
+
+    <footer>
+        <p>⚠️ 所有信号仅供参考，不构成投资建议</p>
+    </footer>
+
+    <script>
+        setInterval(() => location.reload(), 60000);
+    </script>
+</body>
+</html>

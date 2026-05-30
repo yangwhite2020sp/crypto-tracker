@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回测 - {{ display }}/USDT - CryptoTracker Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📊 CryptoTracker Pro</div>
+        <div class="nav-links">
+            <a href="/">仪表盘</a>
+            <a href="/strategies">策略信号</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>📈 {{ display }}/USDT 回测分析</h1>
+
+        <!-- 参数控制 -->
+        <div class="backtest-controls">
+            <form method="GET" action="/backtest/{{ symbol }}">
+                <label>
+                    信号阈值:
+                    <input type="number" name="threshold" value="{{ threshold }}" step="0.05" min="0" max="0.5">
+                </label>
+                <label>
+                    止损比例(%):
+                    <input type="number" name="sl" value="{{ result.stop_loss_pct if result else 5 }}" step="1" min="1" max="20">
+                </label>
+                <button type="submit" class="btn">运行回测</button>
+            </form>
+        </div>
+
+        {% if result %}
+        <!-- 绩效指标 -->
+        <section class="backtest-results">
+            <div class="metrics-grid">
+                <div class="metric">
+                    <span class="metric-label">总收益率</span>
+                    <span class="metric-value {{ 'pos' if result.total_return > 0 else 'neg' }}">{{ "%+.1f"|format(result.total_return) }}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">买入持有</span>
+                    <span class="metric-value {{ 'pos' if result.buy_hold_return > 0 else 'neg' }}">{{ "%+.1f"|format(result.buy_hold_return) }}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">胜率</span>
+                    <span class="metric-value">{{ result.win_rate }}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">交易次数</span>
+                    <span class="metric-value">{{ result.total_trades }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">最大回撤</span>
+                    <span class="metric-value neg">{{ result.max_drawdown }}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">盈亏比</span>
+                    <span class="metric-value">{{ result.profit_factor }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">最终资金</span>
+                    <span class="metric-value">${{ "%.0f"|format(result.final_capital) }}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">总盈亏</span>
+                    <span class="metric-value {{ 'pos' if result.total_pnl > 0 else 'neg' }}">{{ "%+.0f"|format(result.total_pnl) }}</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 净值曲线 -->
+        <section class="chart-section">
+            <canvas id="equityChart" height="200"></canvas>
+        </section>
+
+        <!-- 阈值优化 -->
+        {% if optimization %}
+        <section class="optimization-section">
+            <h2>🔧 阈值优化</h2>
+            <table class="opt-table">
+                <thead>
+                    <tr>
+                        <th>阈值</th>
+                        <th>总收益率</th>
+                        <th>胜率</th>
+                        <th>最大回撤</th>
+                        <th>交易次数</th>
+                        <th>盈亏比</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for opt in optimization %}
+                    <tr>
+                        <td>{{ opt.threshold }}</td>
+                        <td class="{{ 'pos' if opt.total_return > 0 else 'neg' }}">{{ "%+.1f"|format(opt.total_return) }}%</td>
+                        <td>{{ opt.win_rate }}%</td>
+                        <td class="neg">{{ opt.max_drawdown }}%</td>
+                        <td>{{ opt.total_trades }}</td>
+                        <td>{{ opt.profit_factor }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endif %}
+
+        <!-- 最近交易 -->
+        <section class="trades-section">
+            <h2>📋 最近交易</h2>
+            <table class="trade-table">
+                <thead>
+                    <tr>
+                        <th>类型</th>
+                        <th>入场价</th>
+                        <th>出场价</th>
+                        <th>盈亏</th>
+                        <th>盈亏%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in result.trades %}
+                    {% if trade.type in ['SELL', 'STOP_LOSS', 'FINAL_CLOSE'] %}
+                    <tr>
+                        <td class="{{ 'pos' if trade.pnl > 0 else 'neg' }}">{{ trade.type }}</td>
+                        <td>{{ "%.2f"|format(trade.entry) if trade.entry else '-' }}</td>
+                        <td>{{ "%.2f"|format(trade.exit) if trade.exit else '-' }}</td>
+                        <td class="{{ 'pos' if trade.pnl > 0 else 'neg' }}">{{ "%+.2f"|format(trade.pnl) }}</td>
+                        <td class="{{ 'pos' if trade.pnl_pct > 0 else 'neg' }}">{{ "%+.1f"|format(trade.pnl_pct) }}%</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% elif result is defined %}
+        <div class="error-box">
+            <p>数据不足，无法运行回测。请先刷新数据。p>
+        </div>
+        {% endif %}
+    </main>
+
+    <footer>
+        <p>⚠️ 回测结果基于历史数据，不代表未来表现</p>
+    </footer>
+
+    {% if result and result.equity_curve %}
+    <script>
+        const equity = {{ result.equity_curve | tojson }};
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: equity.map((_, i) => i),
+                datasets: [{
+                    label: '净值曲线',
+                    data: equity,
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76,175,80,0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { title: { display: true, text: '策略净值 vs 初始资金' } },
+            }
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

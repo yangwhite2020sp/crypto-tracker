@@ -1,0 +1,7 @@
+{
+  "create": "python3 app.py",
+  "collect": "python3 -c 'from collector import collect_once; collect_once()'",
+  "init-db": "python3 -c 'from database import init_db; init_db()'",
+  "analyze": "python3 -c 'from strategies.spot_strategies import CompositeScoringSystem; from database import get_klines; from config import SYMBOLS; s = CompositeScoringSystem(); [print(f\"{sym}: {s.analyze(get_klines(sym, \\\"1d\\\", 100), sym)}\") for sym in SYMBOLS]'",
+  "backtest": "python3 -c 'from backtest import BacktestEngine; from database import get_klines; e = BacktestEngine(); print(e.run(get_klines(\\\"BTCUSDT\\\", \\\"1d\\\", 500)))'"
+}

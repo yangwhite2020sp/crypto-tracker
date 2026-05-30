@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ display }}/USDT - CryptoTracker Pro</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">📊 CryptoTracker Pro</div>
+        <div class="nav-links">
+            <a href="/">仪表盘</a>
+            <a href="/strategies">策略信号</a>
+        </div>
+        <div class="nav-status">
+            <a href="/backtest/{{ symbol }}" class="btn btn-sm">📈 回测</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>{{ display }}/USDT 详细分析</h1>
+
+        <div class="interval-tabs">
+            <a href="?interval=weekly" class="tab {{ 'active' if interval == 'weekly' else '' }}">周线</a>
+            <a href="?interval=daily" class="tab {{ 'active' if interval == 'daily' else '' }}">日线</a>
+            <a href="?interval=4h" class="tab {{ 'active' if interval == '4h' else '' }}">4H</a>
+        </div>
+
+        <section class="chart-section">
+            <canvas id="priceChart" height="300"></canvas>
+        </section>
+
+        <section class="chart-section">
+            <canvas id="volumeChart" height="100"></canvas>
+        </section>
+
+        {% if analysis %}
+        <section class="analysis-section">
+            <h2>📊 策略分析</h2>
+            <div class="analysis-summary">
+                <div class="summary-score">
+                    {% set dir = analysis.direction %}
+                    {% if 'STRONG_BUY' in dir %}
+                        <span class="badge strong-buy large">🟢🟢 强烈买入</span>
+                    {% elif 'BUY' in dir %}
+                        <span class="badge buy large">🟢 买入</span>
+                    {% elif 'STRONG_SELL' in dir %}
+                        <span class="badge strong-sell large">🔴🔴 强烈卖出</span>
+                    {% elif 'SELL' in dir %}
+                        <span class="badge sell large">🟠 卖出</span>
+                    {% else %}
+                        <span class="badge hold large">🟡 观望</span>
+                    {% endif %}
+                    <div class="big-score">{{ "%+.4f"|format(analysis.total_score) }}</div>
+                </div>
+            </div>
+
+            <div class="factor-details">
+                {% for factor, detail in analysis.details.items() %}
+                {% set val = analysis.factor_scores.get(factor, 0) %}
+                <div class="factor-card {{ 'pos' if val > 0.1 else ('neg' if val < -0.1 else 'neu') }}">
+                    <div class="factor-header">
+                        <span class="factor-name">{{ factor }}</span>
+                        <span class="factor-score">{{ "%+.3f"|format(val) }}</span>
+                    </div>
+                    <p class="factor-detail">{{ detail }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </main>
+
+    <footer>
+        <p>⚠️ 所有信号仅供参考，不构成投资建议</p>
+    </footer>
+
+    <script>
+        const SYMBOL = "{{ symbol }}";
+        const INTERVAL_MAP = {"weekly": "1w", "daily": "1d", "4h": "4h"};
+        const INTERVAL = INTERVAL_MAP["{{ interval }}"] || "1d";
+
+        fetch('/api/klines/' + SYMBOL + '?interval=' + INTERVAL)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) return;
+
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.times,
+                        datasets: [{
+                            label: '收盘价',
+                            data: data.close,
+                            borderColor: '#4CAF50',
+                            backgroundColor: 'rgba(76,175,80,0.1)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { title: { display: true, text: SYMBOL + ' 价格走势' } },
+                        scales: { x: { display: true } }
+                    }
+                });
+
+                const vctx = document.getElementById('volumeChart').getContext('2d');
+                const colors = data.close.map((c, i) => {
+                    if (i === 0) return 'rgba(76,175,80,0.5)';
+                    return c >= data.open[i] ? 'rgba(76,175,80,0.5)' : 'rgba(244,67,54,0.5)';
+                });
+                new Chart(vctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.times,
+                        datasets: [{
+                            label: '成交量',
+                            data: data.volume,
+                            backgroundColor: colors,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { title: { display: true, text: '成交量' } },
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
