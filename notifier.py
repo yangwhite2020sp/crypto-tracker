@@ -14,8 +14,6 @@ class Notifier:
         self.wechat_webhook = WECHAT_WEBHOOK
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
-        if PROXIES:
-            self.session.proxies.update(PROXIES)
 
     def send_message(self, title, content, score=None, direction=None):
         """发送消息到所有配置的渠道"""
