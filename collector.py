@@ -5,13 +5,16 @@ CryptoTracker Pro - 行情数据采集模块
 import time
 import requests
 import pandas as pd
-from config import BINANCE_BASE_URL, SYMBOLS, INTERVALS, KLINE_LIMIT, HTTP_PROXY, HTTPS_PROXY, USE_PROXY
+import os
+from config import BINANCE_BASE_URL, SYMBOLS, INTERVALS, KLINE_LIMIT, USE_PROXY
 from database import save_klines, get_klines
 
-# 代理配置
+# 代理配置：从环境变量读取，不硬编码
 PROXIES = {}
 if USE_PROXY:
-    PROXIES = {"http": HTTP_PROXY, "https": HTTPS_PROXY}
+    http_proxy = os.getenv("HTTP_PROXY", "")
+    https_proxy = os.getenv("HTTPS_PROXY", "")
+    PROXIES = {"http": http_proxy, "https": https_proxy}
 
 
 class BinanceCollector:

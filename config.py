@@ -104,9 +104,8 @@ SIGNAL_CHECK_INTERVAL = 60
 DAILY_REPORT_HOUR = 8
 
 # ============ 代理配置 ============
-# WSL2 通过 Windows 代理访问外网
-HTTPS_PROXY = os.getenv("HTTPS_PROXY", "http://172.18.112.1:7890")
-HTTP_PROXY = os.getenv("HTTP_PROXY", "http://172.18.112.1:7890")
-USE_PROXY = True  # 是否启用代理
+# 通过环境变量 HTTPS_PROXY / HTTP_PROXY 设置代理
+# 例如: export HTTPS_PROXY=http://127.0.0.1:7890
+USE_PROXY = os.getenv("USE_PROXY", "false").lower() in ("true", "1", "yes")
 BACKTEST_DEFAULT_CAPITAL = 10000  # USDT
 BACKTEST_FEE_RATE = 0.001         # 0.1% 手续费

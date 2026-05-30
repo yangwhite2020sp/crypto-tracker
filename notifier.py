@@ -5,11 +5,7 @@ CryptoTracker Pro - 通知推送模块
 import json
 import requests
 from datetime import datetime
-from config import FEISHU_WEBHOOK, WECHAT_WEBHOOK, HTTP_PROXY, HTTPS_PROXY, USE_PROXY
-
-PROXIES = {}
-if USE_PROXY:
-    PROXIES = {"http": HTTP_PROXY, "https": HTTPS_PROXY}
+from config import FEISHU_WEBHOOK, WECHAT_WEBHOOK
 
 
 class Notifier:
